@@ -2,9 +2,11 @@ package Ep2.FrameworkML.Layers;
 
 import Ep2.FrameworkML.ActivationFunctions.Activation;
 import Ep2.FrameworkML.CostFunctions.Cost;
+import Ep2.FrameworkML.LayerDiff;
 import Ep2.FrameworkML.Matrix;
 import Ep2.FrameworkML.Operations;
 
+import java.util.Arrays;
 import java.util.List;
 
 public class Conv3D implements Layer{
@@ -77,6 +79,12 @@ public class Conv3D implements Layer{
      * */
     public Conv3D(int rowFilterSize, int colFilterSize, int depthFilterSize, int rowStride, int colStride, int depthStride,
                   Activation func, boolean flatten){
+        if (rowFilterSize * colFilterSize * depthFilterSize <= 0){
+            throw new IllegalArgumentException("The filter must have row, col, and depth to it.");
+        }
+        if (rowStride * colStride * depthStride <= 0){
+            throw new IllegalArgumentException("The stride values cannot be zero or negative.");
+        }
         this.rowFilterSize = rowFilterSize;
         this.colFilterSize = colFilterSize;
         this.depthFilterSize = depthFilterSize;
@@ -227,8 +235,6 @@ public class Conv3D implements Layer{
         // Apply each numOfDepthFilter wise.
         // 0 b/c array of matrices.
 
-
-        // TODO: Reevaluate because it is wrong.
         // The output should be shape (numOfRowFilters, numOfColFilters, numOfDepthFilters)
         int inputDepthStart = 0;
         // Start at the first filter. filter row start always stays 1.
@@ -273,11 +279,11 @@ public class Conv3D implements Layer{
             inputDepthStart += depthStride;
         }
         // Applying activation function to all elements of z
-        for (int d = 0; d < z.length; d++){
+        for (Matrix matrix : z) {
             // When we reach this stage then z[d] has all been filled up with z values.
             // If we were training then we would copy all these values into "a" and then
             // do the activation function on "a". And also return a, or flatten a.
-            Operations.activationFunction(z[d], act, z);
+            Operations.activationFunction(matrix, act, z);
         }
         if (flatten){
             return Operations.flatten(z);
@@ -287,10 +293,72 @@ public class Conv3D implements Layer{
     @Override
     public Matrix[] feedForwardTraining(Matrix[] inputs) {
         // Remember to save z and a. And set inputs into weightGrad
+        if (inputs[0].getRows() != inputShape[0] || inputs[0].getCols() != inputShape[1] ||
+                inputs.length != inputShape[2]
+        ){
+            throw new IllegalArgumentException("The given input shape is not" +
+                    "compatible with expected input shape");
+        }
+        // The output should be shape (numOfRowFilters, numOfColFilters, numOfDepthFilters)
+        int inputDepthStart = 0;
+        // Start at the first filter. filter row start always stays 1.
+        // Filter depth start always stays at 0.
+        int filterRowStart = 1;
+        int filterColStart = 1;
+        int filterDepthStart = 0;
+        for (int d = 0; d < numOfDepthFilters; d++){
+            // We need to apply filter starting at rowStart and colStart.
+            int inputRowStart = 1;
+            // Apply the filter to each sub tensor of the input.
+            for (int r = 1; r <= numOfRowFilters; r++){
+                int inputColStart = 1;
+                for (int c = 1; c <= numOfColFilters; c++){
+                    Matrix[] subInput = Operations.createSubTensor(inputs,
+                            inputRowStart, inputColStart, inputDepthStart,
+                            rowFilterSize, colFilterSize, depthFilterSize
+                    );
+                    Matrix[] filter = Operations.createSubTensor(weights,
+                            filterRowStart, filterColStart, filterDepthStart,
+                            rowFilterSize, colFilterSize, depthFilterSize
+                    );
+                    float scalar = 0f;
+                    // Now multiply them together element wise and add them up.
+                    for (int k = 0; k < subInput.length; k++){
+                        Matrix prod = Operations.hadamard(subInput[k], filter[k]);
+                        scalar += Operations.elementSum(prod);
+                    }
+                    // We need to set each weight's input it received to weightGrad
+                    Operations.addSubTensor(weightGrad, subInput, filterRowStart, filterColStart, filterDepthStart);
 
-        return new Matrix[0];
+                    // Keep in mind bias and z have the same shape.
+                    float z_rcd = scalar + biases[d].getElement(r, c);
+                    z[d].setElement(r, c, z_rcd);
+                    // the filter size stays the same after each operation.
+                    // Update the column start for both
+                    filterColStart += colFilterSize;
+                    inputColStart += colStride;
+                }
+                // Keep in mind we do not need to check if we run out of bounds
+                // with inputRowStart because we checked already how many row filters
+                // are used in numOfRowFilters
+                inputRowStart += rowStride;
+            }
+            inputDepthStart += depthStride;
+        }
+        // Copying all elements of z into a, one matrix at a time. a and z should have the sam dimensions.
+        for (int d = 0; d < a.length; d++) {
+            a[d] = Operations.copy(z[d]);
+        }
+        for (Matrix m : a){
+            // When we reach this stage then a has all been filled up with z values.
+            // So we apply the activation function to all elements
+            Operations.activationFunction(m, act, a);
+        }
+        if (flatten){
+            return Operations.flatten(a);
+        }
+        return a;
     }
-
 
     @Override
     public void backprop(Cost cost, Matrix[] expected) {
@@ -307,89 +375,84 @@ public class Conv3D implements Layer{
             // need to compute dj/da given the cost function as the activation in the output layer
             // is the actual output of the neural network.
 
+            int[] expShape = new int[]{expected[0].getRows(), expected[0].getCols(), expected.length};
+
+            if (!Arrays.equals(outputShape, expShape)){
+                // This means that the output was reshaped before being output.
+                expected = Operations.reshape(expected, outputShape);
+            }
+            for (int d = 0; d < a.length; d++){
+                for (int r = 1; r <= a[0].getRows(); r++){
+                    for (int c = 1; c <= a[0].getCols(); c++){
+                        float yc = expected[d].getElement(r, c);
+                        float ac = a[d].getElement(r, c);
+                        float dj_dac = cost.derivative(ac, yc);
+                        a[d].setElement(r, c, dj_dac);
+                    }
+                }
+            }
         } else {
-            // Get the weights from the next layer because each activation in the current layer
-            // was multiplied by the weights in the next layer.
-            Matrix[] nextWeights = next.getWeights();
-            // Also need the next layer's dj/dz to multiply with the weight.
-            Matrix[] next_dj_dz = next.getDJ_DZ();
-
-            // TODO: We must check if the dj_dz has
-
-
-            int n_weightDepth = nextWeights.length;
-            int n_weightRows = nextWeights[0].getRows();
-            int n_weightCols = nextWeights[0].getCols();
-
-            int n_djdzDepth = next_dj_dz.length;
-            int n_djdzRows = next_dj_dz[0].getRows();
-            int n_djdzCols = next_dj_dz[0].getCols();
-
-            int activDepth = a.length;
-            int activRows = a[0].getRows();
-            int activCols = a[0].getCols();
-
-            // The total number of filters used on the activation tensor.
-
-
-            // TODO: PROBLEM, we don't know if the next layer is a convolutional layer
-            //      or a dense layer.
-            int n_filtersUsed = n_djdzDepth * n_djdzRows * n_djdzCols;
-
-            int n_filterDepthSize = n_weightDepth;
-            int n_filterRowSize = n_weightRows;
-            int n_filterColSize = n_weightCols/n_filtersUsed;
-            // Okay we now know what size filter was used on the activation tensor
-            // TODO: Figure out row stride, col stride, depth stride.
-
-            int rowStride = calculateStride(activRows, n_filterRowSize, n_djdzRows);
-            int colStride = calculateStride(activCols, n_filterColSize, n_djdzCols);
-            int depthStride = calculateStride(activDepth, n_filterDepthSize, n_djdzDepth);
-
-            // now we figure out the
-
-
-            // TODO: We need to figure out for each activation value,
-            //       all the weights and associated dj/dz that was used on it.
-
-
-
-
-
-
-
-            // Each of the elements in "a" should now have its derivative of j w/rt to itself.
+            a = LayerDiff.actDiff(a, next);
         }
     }
 
-    /** Given the input size, filter size, and output size of that respective dimension,
-     * we return the stride size that the filter takes with respect to that dimension */
-    private int calculateStride(int inputSize, int filterSize, int outputSize){
-        // It just means that the filter spans the entire input size for that dimension
-        if (outputSize == 1 || inputSize == filterSize){
-            return 1;
-        }
-        return (inputSize - filterSize)/(outputSize - 1);
-    }
-
-    /** Computes the derivative of J w/rt to z using the activation vector.
+    /** Computes the derivative of J w/rt to z using the dj/da tensor.
      * And z now represents dj/dz */
     private void deriveZ(){
+        // Copy to a new tensor because we want the original values to send into the
+        // activation function later. Think softmax function.
+        Matrix[] zCopy = new Matrix[z.length];
+        for (int d = 0; d < zCopy.length; d++){
+            zCopy[d] = Operations.copy(z[d]);
+        }
 
+        for (int d = 0; d < z.length; d++){
+            for (int r = 1; r <= z[0].getRows(); r++){
+                for (int c = 1; c <= z[0].getCols(); c++){
+                    // da/dz * dj/da
+                    float dj_dz_rcd = act.derivative(z[d].getElement(r, c), zCopy) * a[d].getElement(r, c);
+                    z[d].setElement(r, c, dj_dz_rcd);
+                }
+            }
+        }
     }
 
     /** dj/dw = the activation that weight was multiplied by times dj/dz for that weight */
     private void deriveW(){
-
+        int colFilterStart = 1;
+        // We add colFilterSize to colFilterStart for each filter.
+        for (int d = 0; d < z.length; d++){
+            for (int r = 1; r <= z[0].getRows(); r++){
+                for (int c = 1; c <= z[0].getCols(); c++){
+                    float dj_dz = z[d].getElement(r, c);
+                    // We multiply the dj/dz value to each element in the associated filter.
+                    for (int d_w = 0; d_w < weightGrad.length; d_w++){
+                        for (int r_w = 1; r_w < weightGrad[0].getRows(); r_w++){
+                            for (int c_w = 0; c_w < colFilterSize; c_w++){
+                                float input = weightGrad[d_w].getElement(r_w, colFilterStart+c_w);
+                                weightGrad[d_w].setElement(r_w, colFilterStart+c_w, input*dj_dz);
+                            }
+                        }
+                    }
+                    // Increment to next filter for each z value.
+                    colFilterStart += colFilterSize;
+                }
+            }
+        }
+        // Add the computed gradient for the weights for this current training example
+        // to the running total for all weight gradients computed for that specific weight.
+        for (int d = 0; d < runningWeightGrad.length; d++){
+            Operations.sumMatrix(runningWeightGrad[d], weightGrad[d]);
+        }
     }
     /** dj/db is the same as dj/dz because dz/db = 1 */
     private void deriveB(){
         biasGrad = z;
         // Add the computed gradient for the bias to the running total for all
         // gradients computed for that bias.
-
-        // TODO: Probably need to run a for loop aye?
-        Operations.sumMatrix(runningBiasGrad[0], biasGrad[0]);
+        for (int d = 0; d < runningBiasGrad.length; d++){
+            Operations.sumMatrix(runningBiasGrad[d], biasGrad[d]);
+        }
     }
     @Override
     public void updateParameters(float learningRate, int trainingCount){
@@ -399,10 +462,30 @@ public class Conv3D implements Layer{
     /** Subtracts from each weight, the average computed gradient for that weight times
      * the learning rate. The updated weights will be in the weights matrix of that layer. */
     private void updateWeights(float learningRate, int trainingCount) {
-        // TODO: Remember to reset running weight and bias grad
+        for (int d = 0; d < weights.length; d++){
+            for (int r = 1; r <= weights[0].getRows(); r++){
+                for (int c = 1; c <= weights[0].getCols(); c++){
+                    float dj_dw = runningWeightGrad[d].getElement(r, c)/trainingCount;
+                    float weightUpdate = weights[d].getElement(r, c) - learningRate*dj_dw;
+                    weights[d].setElement(r, c, weightUpdate);
+                    // After the running grad is used, we set it to 0 to be used on another batch.
+                    runningWeightGrad[d].setElement(r, c, 0f);
+                }
+            }
+        }
     }
     private void updateBiases(float learningRate, int trainingCount) {
-
+        for (int d = 0; d < biases.length; d++){
+            for (int r = 1; r <= biases[0].getRows(); r++){
+                for (int c = 1; c <= biases[0].getCols(); c++){
+                    float dj_dw = runningBiasGrad[d].getElement(r, c)/trainingCount;
+                    float biasUpdate = biases[d].getElement(r, c) - learningRate*dj_dw;
+                    weights[d].setElement(r, c, biasUpdate);
+                    // After the running grad is used, we set it to 0 to be used on another batch.
+                    runningBiasGrad[d].setElement(r, c, 0f);
+                }
+            }
+        }
     }
     /**
      * Returns a string representation of the layer.

@@ -543,5 +543,90 @@ public class OperationsTest {
 
     }
 
+    @Test
+    public void addSubTensorTest(){
+        // Creating a 4x4x4 tensor.
+        Matrix[] a = new Matrix[4];
+        // Where first layer will be numbered 1-16, second 17-32...etc
+        int rowSize = 4;
+        int colSize = 4;
+        // Populating each matrix
+        for (int d = 0; d < a.length; d++){
+            float[] input = new float[rowSize*colSize];
+            for (int i = 1; i <= rowSize*colSize; i++){
+                input[i-1] = i + (d*rowSize*colSize);
+            }
+            a[d] = new Matrix(rowSize, colSize, input);
+        }
+
+        // Creating a 4x4x4 tensor.
+        Matrix[] aSub = new Matrix[4];
+        // Where first layer will be numbered 1-16, second 17-32...etc
+        rowSize = 4;
+        colSize = 4;
+        // Populating each matrix
+        for (int d = 0; d < aSub.length; d++){
+            float[] input = new float[rowSize*colSize];
+            for (int i = 1; i <= rowSize*colSize; i++){
+                input[i-1] = i + (d*rowSize*colSize);
+            }
+            aSub[d] = new Matrix(rowSize, colSize, input);
+        }
+
+        // Error testing.
+        IllegalArgumentException err =
+                assertThrows(IllegalArgumentException.class, () ->
+                        Operations.addSubTensor(a, aSub, 1, 1, 1));
+        assertThat(err).isInstanceOf(IllegalArgumentException.class);
+
+        err = assertThrows(IllegalArgumentException.class, () ->
+                        Operations.addSubTensor(a, aSub, 2, 1, 0));
+        assertThat(err).isInstanceOf(IllegalArgumentException.class);
+
+        err = assertThrows(IllegalArgumentException.class, () ->
+                        Operations.addSubTensor(a, aSub, 1, 2, 0));
+        assertThat(err).isInstanceOf(IllegalArgumentException.class);
+
+        Operations.addSubTensor(a, aSub, 1, 1, 0);
+
+        // a is now changed.
+        for (int d = 0; d < a.length; d++){
+            float[] test = new float[rowSize*colSize];
+            for (int i = 1; i <= rowSize*colSize; i++){
+                test[i-1] = (i + (d*rowSize*colSize))*2;
+            }
+            assertThat(a[d].getMatrixArray()).isEqualTo(test);
+        }
+
+        // New Test
+
+        Matrix[] aSub2 = new Matrix[2];
+        rowSize = 2;
+        colSize = 2;
+        // Populating each matrix
+        for (int d = 0; d < aSub2.length; d++){
+            float[] input = new float[rowSize*colSize];
+            for (int i = 1; i <= rowSize*colSize; i++){
+                input[i-1] = 1f;
+            }
+            aSub2[d] = new Matrix(rowSize, colSize, input);
+        }
+
+        Operations.addSubTensor(a, aSub2, 3, 3, 2);
+
+        // a is now changed.
+
+        for (Matrix m : a){
+            Operations.printMatrix(m);
+            System.out.println();
+        }
+
+
+
+
+
+    }
+
+
 
 }

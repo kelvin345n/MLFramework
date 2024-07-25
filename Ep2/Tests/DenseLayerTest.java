@@ -14,10 +14,6 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
 public class DenseLayerTest {
-
-
-
-
     @Test
     public void denseLayerInferenceTest(){
         int[] inputShape = new int[]{1, 2, 1};
@@ -103,33 +99,6 @@ public class DenseLayerTest {
         assertThat(nn.inference(input)[0].getMatrixArray()).isEqualTo(
                 new float[]{1f, 1f, 1f}
         );
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        // TODO:
-        // Make sure back propagation works. \/\/\/
-
-        // finish Feedforward for the dense layer.
-        //
-        // In the neural network 2: feedforward input and also then backprop.
-        //
-        // After all that done, then set the weights and bias and test to see what you get.
-        //
-        // Also for dense layer we have to determine how to set initial weights and biases.
-
     }
 
     @Test
@@ -189,7 +158,6 @@ public class DenseLayerTest {
             cost = nn.cost(new Matrix[][]{input}, new Matrix[][]{expected});
             System.out.println("Cost After Epoch " + (i+1) + ": " + cost);
         }
-
 
         Matrix[] a = nn.inference(input);
         System.out.println("Inference After Training: " + Operations.stringMatrix(a[0]));

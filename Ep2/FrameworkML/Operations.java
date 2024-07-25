@@ -5,6 +5,7 @@ import org.apache.commons.lang3.ArrayUtils;
 
 import java.util.Arrays;
 
+/** Performs matrix operations */
 public class Operations {
 
     /** Outputs a new matrix that is the dot product of matrix a
@@ -244,6 +245,80 @@ public class Operations {
         }
         return result;
     }
+
+    /** Adds the given subTensor to tensor in-place. Where the addition
+     *  starts at rowStart, colStart, and depthStart in tensor */
+    public static void addSubTensor(Matrix[] tensor, Matrix[] subTensor,
+                                    int rowStart, int colStart, int depthStart){
+
+        int subDepth = subTensor.length;
+        int tensorDepth = tensor.length;
+        if (tensorDepth * subDepth == 0){
+            throw new IllegalArgumentException("Tensors cannot have depth 0");
+        }
+        int subRow = subTensor[0].getRows();
+        int subCol = subTensor[0].getCols();
+        int tensorRow = tensor[0].getRows();
+        int tensorCol = tensor[0].getCols();
+        checkAddSubTensor(rowStart, colStart, depthStart, tensorRow,
+                tensorCol, tensorDepth, subRow, subCol, subDepth);
+
+        int subDepthIdx = 0;
+        for (int d = depthStart; d < tensorDepth; d++){
+            int subRowIdx = 1;
+            for (int r = rowStart; r <= tensorRow; r++){
+                int subColIdx = 1;
+                for (int c = colStart; c <= tensorCol; c++){
+                    float tVal = tensor[d].getElement(r, c);
+                    float sVal = subTensor[subDepthIdx].getElement(subRowIdx, subColIdx);
+                    tensor[d].setElement(r, c, tVal + sVal);
+                    subColIdx++;
+                }
+                subRowIdx++;
+            }
+            subDepthIdx++;
+        }
+    }
+    /** Provides a check for the inputs for 'addSubTensor' function */
+    private static void checkAddSubTensor(int rowStart, int colStart, int depthStart,
+                                          int tensorRow, int tensorCol, int tensorDepth,
+                                          int subRow, int subCol, int subDepth){
+        if (rowStart <= 0 || rowStart > tensorRow){
+            throw new IllegalArgumentException("Row start is out of bounds for the given tensor");
+        }
+        if (colStart <= 0 || colStart > tensorCol){
+            throw new IllegalArgumentException("Column start is out of bounds for the given tensor");
+        }
+        if (depthStart < 0 || depthStart >= tensorDepth){
+            throw new IllegalArgumentException("Depth start is out of bounds for the given tensor");
+        }
+        if (subRow + rowStart - 1 > tensorRow){
+            throw new IllegalArgumentException("row out of bounds error. The subtensor cannot start at " +
+                    "row " + rowStart);
+        }
+        if (subCol + colStart - 1 > tensorCol){
+            throw new IllegalArgumentException("Column out of bounds error. The subtensor cannot start at " +
+                    "col " + colStart);
+        }
+        if (subDepth + depthStart - 1 >= tensorDepth){
+            throw new IllegalArgumentException("Depth out of bounds error. The subtensor cannot start at " +
+                    "depth " + depthStart);
+        }
+    }
+
+    /** Scales up every element in 'tensor' IN-PLACE by the given scalar value.
+     * Basically multiplies every value in tensor by scalar. */
+    public static void scale(Matrix[] tensor, float scalar){
+        for (int d = 0; d < tensor.length; d++){
+            for (int r = 1; r <= tensor[0].getRows(); r++){
+                for (int c = 1; c <= tensor[0].getCols(); c++){
+                    float v = tensor[d].getElement(r, c);
+                    tensor[d].setElement(r, c, scalar * v);
+                }
+            }
+        }
+    }
+
 
 
 

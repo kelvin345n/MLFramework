@@ -2,6 +2,7 @@ package Ep2.FrameworkML.Layers;
 
 import Ep2.FrameworkML.ActivationFunctions.Activation;
 import Ep2.FrameworkML.CostFunctions.Cost;
+import Ep2.FrameworkML.LayerDiff;
 import Ep2.FrameworkML.Matrix;
 import Ep2.FrameworkML.Operations;
 
@@ -224,19 +225,8 @@ public class Dense implements Layer {
                 a[0].setElement(1, c, dj_dac);
             }
         } else {
-            // Get the weights from the next layer because each activation in the current layer
-            // was multiplied by the weights in the next layer.
-            Matrix nextWeights = next.getWeights()[0];
-            for (int c = 1; c <= a[0].getCols(); c++){
-                // Getting all the weights that the activation at "c" is multiplied by.
-                Matrix weightsForA_c = nextWeights.getRowAt(c);
-                // We do hadamard product of each of these weights and the dj_dz matrix
-                // of the next layer
-                Matrix dj_dz_nextLayer = next.getDJ_DZ()[0];
-                Matrix dj_dac = Operations.hadamard(weightsForA_c, dj_dz_nextLayer);
-                a[0].setElement(1, c, Operations.elementSum(dj_dac));
-            }
-            // Each of the elements in "a" should now have its derivative of j w/rt to itself.
+            // Sets the tensor a to a tensor with its dj/da values
+            a = LayerDiff.actDiff(a, next);
         }
     }
 
@@ -244,7 +234,6 @@ public class Dense implements Layer {
      * And z now represents dj/dz */
     private void deriveZ(){
         Matrix[] zCopy = new Matrix[]{Operations.copy(z[0])};
-
         for (int c = 1; c <= z[0].getCols(); c++){
             // da/dz * dj/da
             float dj_dz_c = act.derivative(z[0].getElement(1, c), zCopy) * a[0].getElement(1, c);
