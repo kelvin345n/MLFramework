@@ -4,11 +4,16 @@ import Ep2.FrameworkML.ActivationFunctions.*;
 import Ep2.FrameworkML.CostFunctions.BinaryCrossEntropy;
 import Ep2.FrameworkML.CostFunctions.Cost;
 import Ep2.FrameworkML.CostFunctions.MeanSquareError;
+import Ep2.FrameworkML.Layers.Conv3D;
 import Ep2.FrameworkML.Layers.Dense;
 import Ep2.FrameworkML.Layers.Layer;
 
 import java.io.File;
 import java.io.FileReader;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -32,7 +37,10 @@ public class NeuralNetReader {
             // Used later to update the parameters in each layer.
             List<Matrix[]> weightBiases = new ArrayList<>();
             while(scan.hasNextLine()){
-                Layer layer = readLayer(scan.nextLine(), scan.nextLine(), scan.nextLine(), weightBiases);
+                String desc = scan.nextLine();
+                String weights = scan.nextLine();
+                String biases = scan.nextLine();
+                Layer layer = readLayer(desc, weights, biases, weightBiases);
                 arch.add(layer);
             }
             reader.close();
@@ -89,8 +97,9 @@ public class NeuralNetReader {
      * */
     public static Matrix readMatrix(String str){
         // String[0] holds rows, [1] holds cols, [2] holds array
-        String[] array = str.split("-");
-        return new Matrix(Integer.parseInt(array[0]), Integer.parseInt(array[1]), readFloatArray(array[2]));
+        String[] array = str.split("<>");
+        float[] flArray = readFloatArray(array[2]);
+        return new Matrix(Integer.parseInt(array[0]), Integer.parseInt(array[1]), flArray);
     }
     /** Reads in a string representation of a layer and returns a new corresponding layer.
      *
@@ -105,7 +114,7 @@ public class NeuralNetReader {
     private static Layer readLayer(String description, String weightStr, String biasStr, List<Matrix[]> weightBiases){
         Layer layer;
         // index 0: layerType
-        String[] descArray = description.split("-");
+        String[] descArray = description.split("<>");
         layer = switch (descArray[0]) {
             case "Dense" -> createDense(descArray);
             case "Conv3D" -> createConv3D(descArray);
@@ -113,14 +122,12 @@ public class NeuralNetReader {
         };
         String[] weightMats = weightStr.split("~");
         String[] biasMats = biasStr.split("~");
-        if (weightMats.length != biasMats.length){
-            throw new IllegalArgumentException("the weights and biases should have the same" +
-                    "depth");
-        }
         Matrix[] weights = new Matrix[weightMats.length];
         Matrix[] biases = new Matrix[biasMats.length];
         for (int i = 0; i < weightMats.length; i++){
             weights[i] = readMatrix(weightMats[i]);
+        }
+        for (int i = 0; i < biasMats.length; i++){
             biases[i] = readMatrix(biasMats[i]);
         }
         assert layer != null;
@@ -139,12 +146,25 @@ public class NeuralNetReader {
         Activation func = readActFunction(description[2]);
         return new Dense(neuronCount, func);
     }
-    /** Creates and returns a 3D convolutional layer based on the set of description given */
+    /** Creates and returns a 3D convolutional layer based on the set of description given
+     *
+     * description: IDX 0: LayerType, IDX 1: rowFilterSize, IDX 2: colFilterSize,
+     *              IDX 3: depthFilterSize, IDX 4: rowStride, IDX 5: colStride,
+     *              IDX 6: depthStride, IDX 7: ActFunc, IDX 8: flatten
+     *
+     * */
     private static Layer createConv3D(String[] description){
-        // Index 0: LayerType
-        return null;
+        int rowFilterSize = Integer.parseInt(description[1]);
+        int colFilterSize = Integer.parseInt(description[2]);
+        int depthFilterSize = Integer.parseInt(description[3]);
+        int rowStride = Integer.parseInt(description[4]);
+        int colStride = Integer.parseInt(description[5]);
+        int depthStride = Integer.parseInt(description[6]);
+        Activation func = readActFunction(description[7]);
+        boolean flatten = Boolean.parseBoolean(description[8]);
+        return new Conv3D(rowFilterSize, colFilterSize, depthFilterSize, rowStride,
+                colStride, depthStride, func, flatten);
     }
-
     /** Given a string representation of an integer array, returns a integer array of that string */
     public static int[] readIntArray(String str){
         str = str.substring(1, str.length()-1);
@@ -169,4 +189,18 @@ public class NeuralNetReader {
         }
         return numbers;
     }
+
+    /** Delete the neural network under "fileName" */
+    public static void deleteSave(String fileName){
+        String directoryPath = "C:\\Users\\nkelv\\OneDrive\\Desktop\\jv\\ml_test\\Ep2\\FrameworkML\\Saves";
+        Path path = Paths.get(directoryPath + File.separator + fileName);
+        try {
+            // Delete the file
+            Files.delete(path);
+            System.out.println("File deleted successfully");
+        } catch (IOException e) {
+            System.out.println("Failed to delete the file: " + e.getMessage());
+        }
+    }
+
 }

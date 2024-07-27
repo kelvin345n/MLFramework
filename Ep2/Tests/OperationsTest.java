@@ -165,7 +165,7 @@ public class OperationsTest {
     }
 
     @Test
-    public void hagamardTest(){
+    public void hadamardTest(){
         Matrix a = new Matrix(2, 4, new float[]{
                 1f, 2f, 3f, 4f,
                 5f, 6f, 7f, 8f
@@ -369,7 +369,7 @@ public class OperationsTest {
                 new Matrix(1, 1, new float[]{4f}),
                 new Matrix(1, 1, new float[]{5f}),
         };
-        Matrix[] bOut = Operations.flatten(a);
+        Matrix[] bOut = Operations.flatten(b);
         assertThat(bOut.length).isEqualTo(1);
         assertThat(bOut[0].getRows()).isEqualTo(1);
         assertThat(bOut[0].getCols()).isEqualTo(5);
@@ -384,7 +384,7 @@ public class OperationsTest {
                 new Matrix(2, 1, new float[]{7f, 8f}),
                 new Matrix(2, 1, new float[]{9f, 10f}),
         };
-        Matrix[] cOut = Operations.flatten(a);
+        Matrix[] cOut = Operations.flatten(c);
         assertThat(cOut.length).isEqualTo(1);
         assertThat(cOut[0].getRows()).isEqualTo(1);
         assertThat(cOut[0].getCols()).isEqualTo(10);
@@ -620,10 +620,6 @@ public class OperationsTest {
             Operations.printMatrix(m);
             System.out.println();
         }
-
-
-
-
 
     }
 

@@ -6,6 +6,7 @@ import Ep2.FrameworkML.LayerDiff;
 import Ep2.FrameworkML.Matrix;
 import Ep2.FrameworkML.Operations;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -427,7 +428,7 @@ public class Conv3D implements Layer{
                     float dj_dz = z[d].getElement(r, c);
                     // We multiply the dj/dz value to each element in the associated filter.
                     for (int d_w = 0; d_w < weightGrad.length; d_w++){
-                        for (int r_w = 1; r_w < weightGrad[0].getRows(); r_w++){
+                        for (int r_w = 1; r_w <= weightGrad[0].getRows(); r_w++){
                             for (int c_w = 0; c_w < colFilterSize; c_w++){
                                 float input = weightGrad[d_w].getElement(r_w, colFilterStart+c_w);
                                 weightGrad[d_w].setElement(r_w, colFilterStart+c_w, input*dj_dz);
@@ -480,7 +481,7 @@ public class Conv3D implements Layer{
                 for (int c = 1; c <= biases[0].getCols(); c++){
                     float dj_dw = runningBiasGrad[d].getElement(r, c)/trainingCount;
                     float biasUpdate = biases[d].getElement(r, c) - learningRate*dj_dw;
-                    weights[d].setElement(r, c, biasUpdate);
+                    biases[d].setElement(r, c, biasUpdate);
                     // After the running grad is used, we set it to 0 to be used on another batch.
                     runningBiasGrad[d].setElement(r, c, 0f);
                 }
@@ -489,10 +490,35 @@ public class Conv3D implements Layer{
     }
     /**
      * Returns a string representation of the layer.
+     *
+     * Output:
+     * First Line: Conv3D rowFilterSize colFilterSize depthFilterSize rowStride colStride depthStride ActFunc flatten
+     * Second Line: "list of weight matrices"
+     * Third line: "list of bias matrices"
+     *
+     * So every new matrix on the same line would mean another element to the matrix list or 3-D.
      */
     @Override
     public List<String> stringLayer() {
-        return null;
+        List<String> layerRep = new ArrayList<>();
+        layerRep.add("Conv3D<>" + rowFilterSize + "<>" + colFilterSize + "<>" + depthFilterSize +
+                "<>" + rowStride + "<>" + colStride + "<>" + depthStride + "<>" +
+                act.name() + "<>" + flatten);
+        // The next layer holds all the weight matrices all in one line.
+        StringBuilder wb = new StringBuilder();
+        for (int i = 0; i < weights.length; i++){
+            wb.append(Operations.stringMatrix(weights[i]));
+            // The "~" will be used to separate each matrix.
+            wb.append("~");
+        }
+        layerRep.add(wb.toString());
+        StringBuilder bb = new StringBuilder();
+        for (int i = 0; i < biases.length; i++){
+            bb.append(Operations.stringMatrix(biases[i]));
+            bb.append("~");
+        }
+        layerRep.add(bb.toString());
+        return layerRep;
     }
 
     @Override

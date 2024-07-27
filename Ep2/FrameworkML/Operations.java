@@ -61,8 +61,8 @@ public class Operations {
     public static String stringMatrix(Matrix a){
         // First two numbers are the row and cols
         StringBuilder sb = new StringBuilder();
-        // The rows, cols, and array string will be split using the "-" symbol.
-        sb.append(a.getRows() + "-" + a.getCols() + "-" + Arrays.toString(a.getMatrixArray()));
+        // The rows, cols, and array string will be split using the ">" symbol.
+        sb.append(a.getRows() + "<>" + a.getCols() + "<>" + Arrays.toString(a.getMatrixArray()));
         return sb.toString();
     }
 
@@ -263,20 +263,14 @@ public class Operations {
         checkAddSubTensor(rowStart, colStart, depthStart, tensorRow,
                 tensorCol, tensorDepth, subRow, subCol, subDepth);
 
-        int subDepthIdx = 0;
-        for (int d = depthStart; d < tensorDepth; d++){
-            int subRowIdx = 1;
-            for (int r = rowStart; r <= tensorRow; r++){
-                int subColIdx = 1;
-                for (int c = colStart; c <= tensorCol; c++){
-                    float tVal = tensor[d].getElement(r, c);
-                    float sVal = subTensor[subDepthIdx].getElement(subRowIdx, subColIdx);
-                    tensor[d].setElement(r, c, tVal + sVal);
-                    subColIdx++;
+        for (int d = 0; d < subDepth; d++){
+            for (int r = 1; r <= subRow; r++){
+                for (int c = 1; c <= subCol; c++){
+                    float tVal = tensor[depthStart+d].getElement(rowStart+r-1, colStart+c-1);
+                    float sVal = subTensor[d].getElement(r, c);
+                    tensor[depthStart+d].setElement(rowStart+r-1, colStart+c-1, tVal + sVal);
                 }
-                subRowIdx++;
             }
-            subDepthIdx++;
         }
     }
     /** Provides a check for the inputs for 'addSubTensor' function */

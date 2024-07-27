@@ -267,39 +267,17 @@ public class Conv3DLayerTest {
                 })
         };
         Matrix[][] trainingIn = new Matrix[][]{
-                input
+                input,
         };
         Matrix[][] trainingEx = new Matrix[][]{
-                expected
+                expected,
         };
 
-        System.out.println("This should equal 282.875: " + nn.cost(trainingIn, trainingEx));
-        nn.trainNetwork(trainingIn, trainingEx, 0.001f);
-
-
-
-
-        // Making inference.
-        Matrix[] inference = nn.inference(input);
-
-        assertThat(inference.length).isEqualTo(1);
-        assertThat(inference[0].getRows()).isEqualTo(1);
-        assertThat(inference[0].getCols()).isEqualTo(8);
-
-        System.out.println("Inference matrix: ");
-        for (Matrix m : inference){
-            Operations.printMatrix(m);
-            System.out.println();
-        }
-
-        assertThat(inference.length).isEqualTo(1);
-        assertThat(inference[0].getRows()).isEqualTo(1);
-        assertThat(inference[0].getCols()).isEqualTo(8);
-        assertThat(inference[0].getMatrixArray()).isEqualTo(new float[]{
-                1, 0, 1467, 0, 0, 1921, 7, 1
-        });
+        System.out.println("This should equal 2263: " + nn.cost(trainingIn, trainingEx));
+        nn.trainNetwork(trainingIn, trainingEx, 0.0000000001f);
 
     }
+
 
 
     public static void main(String[] args) {

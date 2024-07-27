@@ -183,7 +183,7 @@ public class Dense implements Layer {
      *
      * Output:
      *
-     * First Line: Dense NEURONCOUNT ACTFUNCTION
+     * First Line: Dense-NEURONCOUNT-ACTFUNCTION
      * Second Line: "list of weight matrices"
      * Third line: "list of bias matrices"
      *
@@ -192,7 +192,7 @@ public class Dense implements Layer {
     @Override
     public List<String> stringLayer() {
         List<String> layerRep = new ArrayList<>();
-        layerRep.add("Dense-" + neurons + "-" + act.name());
+        layerRep.add("Dense<>" + neurons + "<>" + act.name());
         // The next layer holds all the weight matrices all in one line.
         StringBuilder wb = new StringBuilder();
         for (int i = 0; i < weights.length; i++){
