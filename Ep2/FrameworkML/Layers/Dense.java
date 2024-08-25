@@ -55,7 +55,7 @@ public class Dense implements Layer {
         // Number of columns in weight matrix is equal to number of neurons.
         // Number of rows in weight matrix is equal to number of columns in input
         weights = new Matrix[]{new Matrix(cols, neurons)};
-        weights[0].randomizeMatrix(0, 1);
+        weights[0].heInitialization(cols);
         weightGrad = new Matrix[]{new Matrix(cols, neurons)};
         runningWeightGrad = new Matrix[]{new Matrix(cols, neurons)};
         // Bias matrix will be a row vector the size of the number of neurons.
